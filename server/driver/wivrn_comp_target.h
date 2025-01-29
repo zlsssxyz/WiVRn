@@ -21,6 +21,7 @@
 
 #include "main/comp_target.h"
 
+#include "encoder/bitrate_control.h"
 #include "encoder/encoder_settings.h"
 #include "utils/wivrn_vk_bundle.h"
 #include "vk/allocation.h"
@@ -96,6 +97,7 @@ struct wivrn_comp_target : public comp_target
 	std::vector<encoder_settings> settings;
 	std::list<std::jthread> encoder_threads;
 	std::vector<std::shared_ptr<video_encoder>> encoders;
+	std::optional<bitrate_control> bitrate_controller;
 
 	wivrn::wivrn_session & cnx;
 	std::unique_ptr<wivrn_foveation_renderer> foveation_renderer = nullptr;

@@ -98,6 +98,10 @@ private:
 
 	std::shared_ptr<sender> shared_sender;
 
+protected:
+	// When not 0, a bitrate change was requested
+	std::atomic<uint64_t> wanted_bitrate = 0;
+
 public:
 	static std::unique_ptr<video_encoder> create(
 	        wivrn_vk_bundle &,
@@ -121,6 +125,10 @@ public:
 
 	virtual void on_feedback(const from_headset::feedback &);
 	virtual void reset();
+	void set_bitrate(uint64_t bitrate)
+	{
+		wanted_bitrate = bitrate;
+	}
 
 	void encode(wivrn_session & cnx,
 	            const to_headset::video_stream_data_shard::view_info_t & view_info,

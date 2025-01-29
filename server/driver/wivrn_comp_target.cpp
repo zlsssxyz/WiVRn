@@ -141,6 +141,8 @@ static void create_encoders(wivrn_comp_target * cn)
 		thread_params[settings.group].emplace_back(encoder);
 	}
 
+	cn->bitrate_controller.emplace(U_TIME_1S_IN_NS / desc.fps, cn->encoders, cn->settings, 0.8);
+
 	for (auto & [group, params]: thread_params)
 	{
 		auto & thread = cn->encoder_threads.emplace_back(
@@ -774,6 +776,8 @@ void wivrn_comp_target::on_feedback(const from_headset::feedback & feedback, con
 		return;
 	encoders[stream]->on_feedback(feedback);
 	pacer.on_feedback(feedback, o);
+	if (bitrate_controller)
+		bitrate_controller->on_feedback(feedback);
 }
 
 void wivrn_comp_target::reset_encoders()

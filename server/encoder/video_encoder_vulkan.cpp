@@ -84,8 +84,8 @@ wivrn::video_encoder_vulkan::video_encoder_vulkan(
 	rate_control = vk::VideoEncodeRateControlInfoKHR{
 	        .layerCount = 1,
 	        .pLayers = &rate_control_layer,
-	        .virtualBufferSizeInMs = 1'000,
-	        .initialVirtualBufferSizeInMs = 500,
+	        .virtualBufferSizeInMs = 100,
+	        .initialVirtualBufferSizeInMs = 20,
 	};
 
 	if (encode_caps.rateControlModes & vk::VideoEncodeRateControlModeFlagBitsKHR::eCbr)
@@ -691,6 +691,27 @@ std::pair<bool, vk::Semaphore> wivrn::video_encoder_vulkan::present_image(vk::Im
 		        .pImageMemoryBarriers = &dpb_barrier,
 		});
 		session_initialized = true;
+	}
+
+	if (auto bitrate = wanted_bitrate.exchange(0); bitrate and rate_control)
+	{
+		rate_control_layer.averageBitrate = std::min<uint64_t>(bitrate, encode_caps.maxBitrate);
+		switch (rate_control->rateControlMode)
+		{
+			case vk::VideoEncodeRateControlModeFlagBitsKHR::eCbr:
+				rate_control_layer.maxBitrate = rate_control_layer.averageBitrate;
+				break;
+			case vk::VideoEncodeRateControlModeFlagBitsKHR::eVbr:
+				rate_control_layer.maxBitrate = std::min(2 * rate_control_layer.averageBitrate, encode_caps.maxBitrate);
+				break;
+			default:
+				break;
+		}
+		video_cmd_buf.controlVideoCodingKHR(
+		        vk::VideoCodingControlInfoKHR{
+		                .pNext = &rate_control.value(),
+		                .flags = vk::VideoCodingControlFlagBitsKHR::eEncodeRateControl,
+		        });
 	}
 
 	vk::VideoEncodeInfoKHR encode_info{

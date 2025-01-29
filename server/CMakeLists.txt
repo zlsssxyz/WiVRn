@@ -73,6 +73,7 @@ add_executable(wivrn-server
 
 		audio/audio_setup.cpp
 
+		encoder/bitrate_control.cpp
 		encoder/encoder_settings.cpp
 		encoder/video_encoder.cpp
 

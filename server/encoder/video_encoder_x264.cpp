@@ -230,6 +230,11 @@ std::pair<bool, vk::Semaphore> video_encoder_x264::present_image(vk::Image y_cbc
 
 std::optional<video_encoder::data> video_encoder_x264::encode(bool idr, std::chrono::steady_clock::time_point pts, uint8_t slot)
 {
+	if (auto bitrate = wanted_bitrate.exchange(0))
+	{
+		param.rc.i_bitrate = bitrate / 1000;
+		x264_encoder_reconfig(enc, &param);
+	}
 	int num_nal;
 	x264_nal_t * nal;
 	auto & pic = in[slot].pic;
