@@ -158,7 +158,7 @@ jobs:
         patch --directory=${{github.workspace}}/monado --strip=1 < ${{github.workspace}}/patches/monado-ci/0001-remote-resolution.patch
 
         DRIVERS=$(grep -oE "XRT_BUILD_DRIVER_[A-Z0-9_]*" monado/CMakeLists.txt | sort -u  | grep -v XRT_BUILD_DRIVER_REMOTE | sed 's/\(.*\)/-D\1=OFF/')
-        cmake monado -B ${{github.workspace}}/build-monado -DCMAKE_BUILD_TYPE=Release -DXRT_FEATURE_SERVICE_SYSTEMD=OFF -DXRT_FEATURE_SERVICE=OFF -DXRT_BUILD_DRIVER_REMOTE=ON -DXRT_MODULE_COMPOSITOR_MAIN=ON -DXRT_HAVE_WAYLAND=ON $DRIVERS -DXRT_MODULE_MONADO_REMOTECTL=ON -DBUILD_TESTING=OFF -DXRT_FEATURE_OPENXR_VISIBILITY_MASK=OFF
+        cmake monado -B ${{github.workspace}}/build-monado -DCMAKE_BUILD_TYPE=Release -DXRT_FEATURE_SERVICE_SYSTEMD=OFF -DXRT_FEATURE_SERVICE=OFF -DXRT_BUILD_DRIVER_REMOTE=ON -DXRT_MODULE_COMPOSITOR_MAIN=ON -DXRT_HAVE_WAYLAND=ON $DRIVERS -DXRT_MODULE_MONADO_REMOTECTL=ON -DBUILD_TESTING=OFF -DXRT_FEATURE_OPENXR_VISIBILITY_MASK=OFF -DXRT_FEATURE_OPENXR_LAYER_COLOR_SCALE_BIAS=ON
 
         cmake --build ${{github.workspace}}/build-monado
 
