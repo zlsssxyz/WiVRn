@@ -185,6 +185,7 @@ static std::string steam_command()
 	return command;
 }
 
+int close_fd;
 namespace
 {
 int stdin_pipe_fds[2];
@@ -283,7 +284,6 @@ void start_server()
 			// Redirect stdin
 			dup2(stdin_pipe_fds[0], 0);
 			close(stdin_pipe_fds[0]);
-			close(stdin_pipe_fds[1]);
 		}
 
 		// In most cases there is no server-side reprojection and
@@ -346,8 +346,8 @@ void kill_app()
 void kill_server()
 {
 	// Write to the server's stdin to make it quit
-	char buffer[] = "\n";
-	if (write(stdin_pipe_fds[1], &buffer, strlen(buffer)) < 0)
+	char buffer = '\n';
+	if (write(stdin_pipe_fds[1], &buffer, 1) < 0)
 		std::cerr << "Cannot stop monado properly." << std::endl;
 
 	// Send SIGTERM after 1s if it is still running
@@ -921,6 +921,7 @@ int inner_main(int argc, char * argv[], bool show_instructions)
 		perror("pipe");
 		return wivrn_exit_code::cannot_create_pipe;
 	}
+	close_fd = stdin_pipe_fds[1];
 	fcntl(stdin_pipe_fds[0], F_SETFD, FD_CLOEXEC);
 	fcntl(stdin_pipe_fds[1], F_SETFD, FD_CLOEXEC);
 

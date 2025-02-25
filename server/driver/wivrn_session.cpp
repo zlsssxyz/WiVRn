@@ -552,6 +552,12 @@ void wivrn_session::run(std::stop_token stop)
 			reconnect();
 		}
 	}
+	char c = '\n';
+	if (int err = write(close_fd, &c, 1); err < 0)
+	{
+		U_LOG_E("Failed to stop process: %s", strerror(-err));
+		exit(0);
+	}
 }
 
 xrt_result_t wivrn_session::push_event(const xrt_session_event & event)
@@ -595,13 +601,11 @@ void wivrn_session::dump_time(const std::string & event, uint64_t frame, int64_t
 
 static bool quit_if_no_client(u_system & xrt_system)
 {
-	{
-		scoped_lock lock(xrt_system.sessions.mutex);
-		if (xrt_system.sessions.count)
-			return false;
-	}
+	scoped_lock lock(xrt_system.sessions.mutex);
+	if (xrt_system.sessions.count)
+		return false;
 	U_LOG_I("No OpenXR client connected, exiting");
-	exit(0);
+	return true;
 }
 
 void wivrn_session::reconnect()
@@ -621,45 +625,45 @@ void wivrn_session::reconnect()
 	}
 
 	U_LOG_I("Waiting for new connection");
-	auto tcp = accept_connection(0 /*stdin*/, [this]() { return quit_if_no_client(xrt_system); });
-	if (not tcp)
-		exit(0);
-
-	struct no_client_connected
-	{};
-
-	try
+	if (auto tcp = accept_connection(STDIN_FILENO, [this]() { return quit_if_no_client(xrt_system); }))
 	{
-		offset_est.reset();
-		connection->reset(std::move(*tcp), [this]() {
-			if (quit_if_no_client(xrt_system))
-				throw no_client_connected{};
-		});
+		struct no_client_connected
+		{};
 
-		// const auto & info = connection->info();
-		// FIXME: ensure new client is compatible
-
-		comp_target->reset_encoders();
-		if (audio_handle)
-			send_control(audio_handle->description());
-
-		event.state.visible = true;
-		event.state.focused = true;
-		result = xrt_session_event_sink_push(&xrt_system.broadcast, &event);
-		if (result != XRT_SUCCESS)
+		try
 		{
-			U_LOG_W("Failed to notify session state change");
+			offset_est.reset();
+			connection->reset(std::move(*tcp), [this]() {
+				if (quit_if_no_client(xrt_system))
+					throw no_client_connected{};
+			});
+
+			// const auto & info = connection->info();
+			// FIXME: ensure new client is compatible
+
+			comp_target->reset_encoders();
+			if (audio_handle)
+				send_control(audio_handle->description());
+
+			event.state.visible = true;
+			event.state.focused = true;
+			result = xrt_session_event_sink_push(&xrt_system.broadcast, &event);
+			if (result != XRT_SUCCESS)
+			{
+				U_LOG_W("Failed to notify session state change");
+			}
+			return;
+		}
+		catch (no_client_connected)
+		{
+			U_LOG_I("No OpenXR application connected");
+		}
+		catch (const std::exception & e)
+		{
+			U_LOG_E("Reconnection failed: %s", e.what());
 		}
 	}
-	catch (no_client_connected)
-	{
-		U_LOG_I("No OpenXR application connected");
-		exit(0);
-	}
-	catch (const std::exception & e)
-	{
-		U_LOG_E("Reconnection failed: %s", e.what());
-	}
+	thread.request_stop();
 }
 
 xrt_result_t wivrn_session::get_roles(xrt_system_roles * out_roles)

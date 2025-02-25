@@ -33,6 +33,7 @@ class wivrn_connection;
 }
 
 extern std::unique_ptr<wivrn::wivrn_connection> connection;
+extern int close_fd; // write to this file descriptor to terminate the process
 
 namespace from_monado
 {
