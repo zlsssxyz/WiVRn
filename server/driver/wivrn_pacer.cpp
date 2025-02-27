@@ -118,7 +118,7 @@ void wivrn_pacer::predict(
 
 void wivrn_pacer::on_feedback(const wivrn::from_headset::feedback & feedback, const clock_offset & offset)
 {
-	if (feedback.times_displayed > 1 or not feedback.blitted)
+	if (feedback.times_displayed > 1 or not feedback.received_from_decoder)
 		return;
 
 	std::lock_guard lock(mutex);
@@ -144,7 +144,8 @@ void wivrn_pacer::on_feedback(const wivrn::from_headset::feedback & feedback, co
 			compute_cv.notify_all();
 		}
 
-		client_render_phase_ns = lerp_mod<int64_t>(client_render_phase_ns, offset.from_headset(feedback.blitted) % frame_duration_ns, 0.1, frame_duration_ns);
+		if (feedback.blitted)
+			client_render_phase_ns = lerp_mod<int64_t>(client_render_phase_ns, offset.from_headset(feedback.blitted) % frame_duration_ns, 0.1, frame_duration_ns);
 	}
 
 	if (feedback.displayed and feedback.displayed > feedback.blitted and feedback.displayed < feedback.blitted + 100'000'000)
