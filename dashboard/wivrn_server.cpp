@@ -583,6 +583,7 @@ QList<openVRCompatLib> wivrn_server::openVRCompat() const
 		return {
 		        openVRCompatLib(i18n("xrizer"), "xrizer"),
 		        openVRCompatLib(i18n("Open Composite"), "OpenComposite"),
+		        openVRCompatLib(i18n("VapoR"), "lib/VapoR"),
 		};
 
 	QList<openVRCompatLib> result;
