@@ -47,12 +47,18 @@ class video_encoder_vulkan_h265 : public video_encoder_vulkan
 	vk::VideoEncodeH265GopRemainingFrameInfoKHR gop_info;
 	vk::VideoEncodeH265RateControlInfoKHR rate_control_h265;
 
-	video_encoder_vulkan_h265(wivrn_vk_bundle & vk, vk::Rect2D rect, vk::VideoEncodeCapabilitiesKHR encode_caps, float fps, uint64_t bitrate);
+	video_encoder_vulkan_h265(wivrn_vk_bundle & vk,
+	                          vk::Rect2D rect,
+	                          const vk::VideoCapabilitiesKHR & video_caps,
+	                          const vk::VideoEncodeCapabilitiesKHR & encode_caps,
+	                          float fps,
+	                          uint8_t stream_idx,
+	                          const encoder_settings & settings);
 
 protected:
 	std::vector<void *> setup_slot_info(size_t dpb_size) override;
 
-	void * encode_info_next(uint32_t frame_num, size_t slot, std::optional<size_t> ref) override;
+	void * encode_info_next(uint32_t frame_num, size_t slot, std::optional<int32_t>) override;
 	virtual vk::ExtensionProperties std_header_version() override;
 
 	void send_idr_data() override;
@@ -60,7 +66,8 @@ protected:
 public:
 	static std::unique_ptr<video_encoder_vulkan_h265> create(wivrn_vk_bundle & vk,
 	                                                         encoder_settings & settings,
-	                                                         float fps);
+	                                                         float fps,
+	                                                         uint8_t stream_idx);
 
 	std::vector<uint8_t> get_vps_sps_pps();
 

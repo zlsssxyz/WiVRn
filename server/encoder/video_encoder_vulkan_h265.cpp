@@ -20,9 +20,17 @@
 #include "encoder/encoder_settings.h"
 #include "util/u_logging.h"
 #include "utils/wivrn_vk_bundle.h"
+#include <vulkan/vulkan_structs.hpp>
 
-wivrn::video_encoder_vulkan_h265::video_encoder_vulkan_h265(wivrn_vk_bundle & vk, vk::Rect2D rect, vk::VideoEncodeCapabilitiesKHR encode_caps, float fps, uint64_t bitrate) :
-        video_encoder_vulkan(vk, rect, encode_caps, fps, bitrate),
+wivrn::video_encoder_vulkan_h265::video_encoder_vulkan_h265(
+        wivrn_vk_bundle & vk,
+        vk::Rect2D rect,
+        const vk::VideoCapabilitiesKHR & video_caps,
+        const vk::VideoEncodeCapabilitiesKHR & encode_caps,
+        float fps,
+        uint8_t stream_idx,
+        const encoder_settings & settings) :
+        video_encoder_vulkan(vk, rect, video_caps, encode_caps, fps, stream_idx, settings),
         vps{
                 .flags{
                         .vps_temporal_id_nesting_flag = 0,
@@ -198,7 +206,8 @@ std::vector<void *> wivrn::video_encoder_vulkan_h265::setup_slot_info(size_t dpb
 std::unique_ptr<wivrn::video_encoder_vulkan_h265> wivrn::video_encoder_vulkan_h265::create(
         wivrn_vk_bundle & vk,
         encoder_settings & settings,
-        float fps)
+        float fps,
+        uint8_t stream_idx)
 {
 	vk::Rect2D rect{
 	        .offset = {
@@ -217,7 +226,7 @@ std::unique_ptr<wivrn::video_encoder_vulkan_h265> wivrn::video_encoder_vulkan_h2
 	                vk::VideoEncodeCapabilitiesKHR,
 	                vk::VideoEncodeH265CapabilitiesKHR>(video_profile_info.get());
 
-	std::unique_ptr<video_encoder_vulkan_h265> self(new video_encoder_vulkan_h265(vk, rect, encode_caps, fps, settings.bitrate));
+	std::unique_ptr<video_encoder_vulkan_h265> self(new video_encoder_vulkan_h265(vk, rect, video_caps, encode_caps, fps, stream_idx, settings));
 
 	vk::VideoEncodeH265SessionParametersAddInfoKHR h265_add_info{};
 	h265_add_info.setStdVPSs(self->vps);
@@ -269,10 +278,10 @@ std::vector<uint8_t> wivrn::video_encoder_vulkan_h265::get_vps_sps_pps()
 void wivrn::video_encoder_vulkan_h265::send_idr_data()
 {
 	auto data = get_vps_sps_pps();
-	SendData(data, false);
+	SendData(data, false, true);
 }
 
-void * wivrn::video_encoder_vulkan_h265::encode_info_next(uint32_t frame_num, size_t slot, std::optional<size_t> ref)
+void * wivrn::video_encoder_vulkan_h265::encode_info_next(uint32_t frame_num, size_t slot, std::optional<int32_t> ref)
 {
 	slice_header = {
 	        .flags =
@@ -368,9 +377,8 @@ void * wivrn::video_encoder_vulkan_h265::encode_info_next(uint32_t frame_num, si
 }
 vk::ExtensionProperties wivrn::video_encoder_vulkan_h265::std_header_version()
 {
-	// FIXME: update to version 1.0
 	vk::ExtensionProperties std_header_version{
-	        .specVersion = 0x0000900b, // VK_MAKE_VIDEO_STD_VERSION(1, 0, 0),
+	        .specVersion = VK_MAKE_VIDEO_STD_VERSION(1, 0, 0),
 	};
 	strcpy(std_header_version.extensionName,
 	       VK_STD_VULKAN_VIDEO_CODEC_H265_ENCODE_EXTENSION_NAME);
