@@ -1,0 +1,33 @@
+From cd38c2179a38929ca126f5325869a221f175b935 Mon Sep 17 00:00:00 2001
+From: no name <git-am@invalid>
+Date: Tue, 1 Jul 2025 17:51:36 +0200
+Subject: [PATCH 12/12] Limit image rect to recommended size
+
+---
+ src/xrt/compositor/main/comp_compositor.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/src/xrt/compositor/main/comp_compositor.c b/src/xrt/compositor/main/comp_compositor.c
+index 36e3297f7..ce8e9a2ff 100644
+--- a/src/xrt/compositor/main/comp_compositor.c
++++ b/src/xrt/compositor/main/comp_compositor.c
+@@ -1111,14 +1111,12 @@ comp_main_create_system_compositor(struct xrt_device *xdev,
+ 	for (uint32_t i = 0; i < view_count; ++i) {
+ 		uint32_t w = (uint32_t)(xdev->hmd->views[i].display.w_pixels * scale);
+ 		uint32_t h = (uint32_t)(xdev->hmd->views[i].display.h_pixels * scale);
+-		uint32_t w_2 = xdev->hmd->views[i].display.w_pixels * 2;
+-		uint32_t h_2 = xdev->hmd->views[i].display.h_pixels * 2;
+ 
+ 		sys_info->views[i].recommended.width_pixels  = w;
+ 		sys_info->views[i].recommended.height_pixels = h;
+ 		sys_info->views[i].recommended.sample_count  = 1;
+-		sys_info->views[i].max.width_pixels          = w_2;
+-		sys_info->views[i].max.height_pixels         = h_2;
++		sys_info->views[i].max.width_pixels          = w;
++		sys_info->views[i].max.height_pixels         = h;
+ 		sys_info->views[i].max.sample_count          = 1;
+ 	}
+ 	// clang-format on
+-- 
+2.50.0
+
