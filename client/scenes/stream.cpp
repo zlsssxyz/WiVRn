@@ -391,7 +391,9 @@ void scenes::stream::on_focused()
 	}
 
 	assert(video_stream_description);
-	setup_reprojection_swapchain();
+	setup_reprojection_swapchain(
+	        video_stream_description->defoveated_width / view_count,
+	        video_stream_description->defoveated_height);
 }
 
 void scenes::stream::on_unfocused()
@@ -896,15 +898,39 @@ void scenes::stream::render(const XrFrameState & frame_state)
 
 	command_buffer.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, *query_pool, 1);
 
-	// defoveate the image
-	auto extents = reprojector->reproject(command_buffer, foveation, image_index);
-	for (size_t i = 0; i < view_count; ++i)
+	XrExtent2Di extents[view_count];
 	{
-		extents[i] = {
-		        .width = std::min(extents[i].width, swapchain.width()),
-		        .height = std::min(extents[i].height, swapchain.height()),
-		};
+		int32_t max_width = 0;
+		int32_t max_height = 0;
+		for (size_t i = 0; i < view_count; ++i)
+		{
+			extents[i] = reprojector->defoveated_size(foveation[i]);
+			max_width = std::max(max_width, extents[i].width);
+			max_height = std::max(max_height, extents[i].height);
+		}
+		// If the defoveated image is larger than the swapchain, try to reallocate one
+		if (swapchain.width() < max_width or swapchain.height() < max_height)
+		{
+			try
+			{
+				// This might be unsafe
+				lock.unlock();
+				setup_reprojection_swapchain(max_width, max_height);
+			}
+			catch (std::exception & e)
+			{
+				spdlog::warn("failed to increase swapchain size");
+				for (size_t i = 0; i < view_count; ++i)
+				{
+					extents[i].width = std::min(extents[i].width, swapchain.width());
+					extents[i].height = std::min(extents[i].height, swapchain.height());
+				}
+			}
+			lock.lock();
+		}
 	}
+	// defoveate the image
+	reprojector->reproject(command_buffer, foveation, image_index);
 
 	command_buffer.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, *query_pool, 2);
 
@@ -1191,7 +1217,7 @@ void scenes::stream::setup(const to_headset::video_stream_description & descript
 	}
 }
 
-void scenes::stream::setup_reprojection_swapchain()
+void scenes::stream::setup_reprojection_swapchain(uint32_t swapchain_width, uint32_t swapchain_height)
 {
 	std::unique_lock lock(decoder_mutex);
 	device.waitIdle();
@@ -1199,8 +1225,6 @@ void scenes::stream::setup_reprojection_swapchain()
 
 	const uint32_t video_width = video_stream_description->width / view_count;
 	const uint32_t video_height = video_stream_description->height;
-	uint32_t swapchain_width = video_stream_description->defoveated_width / view_count;
-	uint32_t swapchain_height = video_stream_description->defoveated_height;
 
 	const configuration::sgsr_settings sgsr = application::get_config().sgsr;
 	if (sgsr.enabled)
